@@ -1,5 +1,5 @@
 struct DivisionByZero <: Exception end
-struct Escape{T} <: Exception 
+struct Escape{T} <: Exception
     funcName::String
     result::T
 end
@@ -21,12 +21,12 @@ end
 
 # Handling tests
 
-handling(DivisionByZero => (c)->println("I saw a division by zero")) do
+handling(DivisionByZero => (c) -> println("I saw a division by zero")) do
     reciprocal(0)
 end
 
-handling(DivisionByZero => (c)->println("I saw it too")) do
-    handling(DivisionByZero => (c)->println("I saw a division by zero")) do
+handling(DivisionByZero => (c) -> println("I saw it too")) do
+    handling(DivisionByZero => (c) -> println("I saw a division by zero")) do
         reciprocal(0)
     end
 end
@@ -40,8 +40,8 @@ end
 function to_escape(func) # a função func tem de ter um argumento exatamente. E quando esse argumento for chamado durante a execução de func, só pode ter um argumento também
     methods = collect(Base.methods(func))
     escapeName = string(method_argnames(last(methods))[2])
-    
-    escape_func = function(arg)
+
+    escape_func = function (arg)
         throw(Escape(escapeName, arg))
     end
 
@@ -50,7 +50,7 @@ function to_escape(func) # a função func tem de ter um argumento exatamente. E
     catch e
         if e isa Escape && e.funcName == escapeName
             return e.result
-        else 
+        else
             rethrow(e)
         end
     end
