@@ -4,8 +4,6 @@ struct Escape{T} <: Exception
     result::T
 end
 
-reciprocal(x) = x == 0 ? throw(DivisionByZero()) : 1 / x
-
 function handling(func, handlers...) # func não pode ter argumentos
     try
         return func()
@@ -16,18 +14,6 @@ function handling(func, handlers...) # func não pode ter argumentos
             end
         end
         rethrow(e)
-    end
-end
-
-# Handling tests
-
-handling(DivisionByZero => (c) -> println("I saw a division by zero")) do
-    reciprocal(0)
-end
-
-handling(DivisionByZero => (c) -> println("I saw it too")) do
-    handling(DivisionByZero => (c) -> println("I saw a division by zero")) do
-        reciprocal(0)
     end
 end
 
@@ -55,23 +41,3 @@ function to_escape(func) # a função func tem de ter um argumento exatamente. E
         end
     end
 end
-
-outer(n) = n
-
-mystery(n) =
-    1 +
-    to_escape() do outer
-        1 +
-        to_escape() do inner
-            1 +
-            if n == 0
-                inner(1)
-            elseif n == 1
-                outer(1)
-            else
-                1
-            end
-        end
-    end
-
-mystery(2)
