@@ -4,16 +4,29 @@ struct Escape{T} <: Exception
     result::T
 end
 
-function handling(func, handlers...) # func não pode ter argumentos
-    try
-        return func()
-    catch e
-        for handler in handlers
-            if e isa handler.first
-                handler.second(e)
+const RESTARTS_STACK = Dict{Symbol,Function}()
+INVOKED_RESTART = nothing
+
+function handling(func, handlers...) # func não pode ter argumentosº
+    global INVOKED_RESTART
+
+    while true
+        try
+            return func()
+        catch e
+            for handler in handlers
+                if e isa handler.first
+                    handler.second(e)
+                end
+            end
+
+            if !isnothing(INVOKED_RESTART)
+                continue
+            else
+                rethrow(e)
+                return
             end
         end
-        rethrow(e)
     end
 end
 
@@ -41,3 +54,36 @@ function to_escape(func) # a função func tem de ter um argumento exatamente. E
         end
     end
 end
+
+function with_restart(func, restarts...)
+    global INVOKED_RESTART
+
+    for restart in restarts
+        RESTARTS_STACK[restart.first] = restart.second
+    end
+
+    if !isnothing(INVOKED_RESTART) && available_restart(INVOKED_RESTART.first)
+        res = INVOKED_RESTART.second
+        INVOKED_RESTART = nothing
+        return res
+    else
+        return func()
+    end
+
+    for restart in restarts
+        delete!(RESTARTS_STACK, restart.name)
+    end
+end
+
+function available_restart(name::Symbol)
+    return haskey(RESTARTS_STACK, name)
+end
+
+function invoke_restart(name::Symbol, args...)
+    global INVOKED_RESTART
+
+    if available_restart(name)
+        INVOKED_RESTART = name => RESTARTS_STACK[name](args...)
+    end
+end
+
