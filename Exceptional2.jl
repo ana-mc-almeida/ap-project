@@ -9,7 +9,7 @@ struct InvokeRestart{T} <: Exception
 end
 
 currentHandlers = Vector{Pair{DataType, Function}}()
-#availableRestarts = # Map<String, Integer>
+availableRestarts = Dict{Symbol, Int}()
 
 function handling(func, handlers...) # func não pode ter argumentos
     global currentHandlers
@@ -61,7 +61,10 @@ function to_escape(func) # Quando o argumento for chamado como função durante 
 end
 
 function with_restart(func, restarts...)
-    # Guardar restarts
+    global availableRestarts
+    for restart in restarts
+        availableRestarts[restart.first] = get(availableRestarts, restart.first, 0) + 1
+    end
 
     try 
         return handling(func)
@@ -75,12 +78,16 @@ function with_restart(func, restarts...)
         end     
         rethrow(e)
     finally
-        # Apaga restarts
+        for restart in restarts
+            availableRestarts[restart.first] > 1 ? 
+                availableRestarts[restart.first] -= 1 : 
+                delete!(availableRestarts, restart.first)
+        end
     end
 end
 
 function available_restart(name::Symbol)
-    return true
+    return get(availableRestarts, name, 0) >= 1
 end
 
 function invoke_restart(name::Symbol, args...)
