@@ -1,4 +1,4 @@
-include("../../Exceptional.jl")
+include("../../Exceptional2.jl")
 
 reciprocal(value) =
     with_restart(:return_zero => () -> 0,

@@ -13,14 +13,14 @@ currentHandlers = Vector{Pair{DataType, Function}}()
 
 function handling(func, handlers...) # func não pode ter argumentos
     global currentHandlers
-    if (!isnothing(handlers[1])) # TODO permitir mais do que 1 handler
-        push!(currentHandlers, handlers[1])
+    for handler in handlers
+        push!(currentHandlers, handler)
     end
 
     try
         return func()
     catch e
-        for handler in currentHandlers
+        for handler in reverse(currentHandlers)
             if e isa handler.first
                 handler.second(e)
                 # TODO É para dar break aqui? Ou devemos olhar para todos os handlers que tratem da mesma exceção?
@@ -28,10 +28,8 @@ function handling(func, handlers...) # func não pode ter argumentos
         end
         rethrow(e)
     finally
-        if !isnothing(handlers[1])
-            for _ in handlers
-                pop!(currentHandlers)
-            end
+        for _ in handlers
+            pop!(currentHandlers)
         end
     end
 end
@@ -66,7 +64,7 @@ function with_restart(func, restarts...)
     # Guardar restarts
 
     try 
-        return handling(func, nothing)
+        return handling(func)
     catch e
         if e isa InvokeRestart
             for restart in restarts
@@ -88,18 +86,3 @@ end
 function invoke_restart(name::Symbol, args...)
     throw(InvokeRestart(name, args))
 end
-
-# Simple test
-
-handling(DivisionByZero => (c)->invoke_restart(:retry_using, 10)) do
-    reciprocal(0)
-end
-
-reciprocal(value) =
-    with_restart(:return_zero => ()->0,
-                 :return_value => identity,
-                 :retry_using => reciprocal) do
-        value == 0 ?
-            throw(DivisionByZero()) :
-            1/value
-    end
