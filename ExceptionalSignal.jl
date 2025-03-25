@@ -1,0 +1,124 @@
+struct DivisionByZero <: Exception end
+
+struct Escape{T} <: Exception
+    funcName::String
+    result::T
+end
+
+struct InvokeRestart{T} <: Exception
+    funcName::Symbol
+    args::T
+end
+
+struct PAvaException{T} <: Exception
+    exception::T
+    isSignal::Bool
+end
+
+currentHandlers = Vector{Pair{DataType, Function}}()
+availableRestarts = Dict{Symbol, Int}()
+
+function handling(func, handlers...) # func não pode ter argumentos
+    global currentHandlers
+    for handler in handlers
+        push!(currentHandlers, handler)
+    end
+
+    try
+        return func()
+    catch e
+        for handler in reverse(currentHandlers)
+            if e isa PAvaException && e.exception isa handler.first
+                handler.second(e.exception)
+                # TODO É para dar break aqui? Ou devemos olhar para todos os handlers que tratem da mesma exceção?
+            end
+        end
+        rethrow()
+    finally
+        for _ in handlers
+            pop!(currentHandlers)
+        end
+    end
+end
+
+function method_argnames(m::Method)
+    argnames = ccall(:jl_uncompress_argnames, Vector{Symbol}, (Any,), m.slot_syms)
+    isempty(argnames) && return argnames
+    return argnames[1:m.nargs]
+end
+
+function to_escape(func) # Quando o argumento for chamado como função durante a execução de func, só pode ter um argumento
+    methods = collect(Base.methods(func))
+    escapeName = string(method_argnames(last(methods))[2])
+
+    escape_func = function (arg)
+        error(Escape(escapeName, arg))
+    end
+
+    try
+        return func(escape_func)
+    catch e
+        if e isa PAvaException && e.exception isa Escape && e.exception.funcName == escapeName
+            return e.exception.result
+        else
+            rethrow()
+        end
+    end
+
+end
+
+function with_restart(func, restarts...)
+    global availableRestarts
+    for restart in restarts
+        availableRestarts[restart.first] = get(availableRestarts, restart.first, 0) + 1
+    end
+
+    try 
+        return handling(func)
+    catch e
+        if e isa PAvaException && e.exception isa InvokeRestart
+            for restart in restarts
+                if e.exception.funcName == restart.first
+                    return restart.second(e.exception.args...)
+                end
+            end
+        end     
+        rethrow()
+    finally
+        for restart in restarts
+            availableRestarts[restart.first] > 1 ? 
+                availableRestarts[restart.first] -= 1 : 
+                delete!(availableRestarts, restart.first)
+        end
+    end
+end
+
+function available_restart(name::Symbol)
+    return get(availableRestarts, name, 0) >= 1
+end
+
+function invoke_restart(name::Symbol, args...)
+    error(InvokeRestart(name, args))
+end
+
+Base.init_error(e) =
+    if e isa PAvaException
+        if e.isSignal
+            return
+        else
+            e = e.exception
+        end
+    end
+    # TODO Arranjar o comportamento normal da função 
+    println("Uncaught exception: ", e)
+    rethrow(e)
+
+function signal(exception) # TODO explodir se o arg não for exception?
+    throw(PAvaException(exception, true))
+end
+
+Base.error(exception) = throw(PAvaException(exception, false))
+
+teste(x) =
+    signal(DivisionByZero)
+    println("loool")
