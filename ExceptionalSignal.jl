@@ -1,5 +1,3 @@
-struct DivisionByZero <: Exception end
-
 struct Escape{T} <: Exception
     funcName::String
     result::T
@@ -73,7 +71,7 @@ function with_restart(func, restarts...)
         availableRestarts[restart.first] = get(availableRestarts, restart.first, 0) + 1
     end
 
-    try 
+    try
         return handling(func)
     catch e
         if e isa PAvaException && e.exception isa InvokeRestart
@@ -82,13 +80,13 @@ function with_restart(func, restarts...)
                     return restart.second(e.exception.args...)
                 end
             end
-        end     
+        end
         rethrow()
     finally
         for restart in restarts
-            availableRestarts[restart.first] > 1 ? 
-                availableRestarts[restart.first] -= 1 : 
-                delete!(availableRestarts, restart.first)
+            availableRestarts[restart.first] > 1 ?
+            availableRestarts[restart.first] -= 1 :
+            delete!(availableRestarts, restart.first)
         end
     end
 end
@@ -109,9 +107,9 @@ Base.init_error(e) =
             e = e.exception
         end
     end
-    # TODO Arranjar o comportamento normal da função 
-    println("Uncaught exception: ", e)
-    rethrow(e)
+# TODO Arranjar o comportamento normal da função 
+println("Uncaught exception: ", e)
+rethrow(e)
 
 function signal(exception) # TODO explodir se o arg não for exception?
     throw(PAvaException(exception, true))
@@ -121,4 +119,4 @@ Base.error(exception) = throw(PAvaException(exception, false))
 
 teste(x) =
     signal(DivisionByZero)
-    println("loool")
+println("loool")

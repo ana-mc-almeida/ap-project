@@ -1,5 +1,7 @@
 include("../../Exceptional.jl")
 
+struct DivisionByZero <: Exception end
+
 reciprocal(x) = x == 0 ? throw(DivisionByZero()) : 1 / x
 
 mystery(n) =

@@ -1,4 +1,3 @@
-struct DivisionByZero <: Exception end
 struct Escape{T} <: Exception
     funcName::String
     result::T
