@@ -2,29 +2,33 @@ struct Escape{T} <: Exception
     funcName::String
     result::T
 end
+struct InvokeRestart{T} <: Exception
+    funcName::Symbol
+    args::T
+end
 
-const RESTARTS_STACK = Dict{Symbol,Function}()
-INVOKED_RESTART = nothing
+currentHandlers = Vector{Pair{DataType, Function}}()
+availableRestarts = Dict{Symbol, Int}()
 
-function handling(func, handlers...) # func não pode ter argumentosº
-    global INVOKED_RESTART
+function handling(func, handlers...) # func não pode ter argumentos
+    global currentHandlers
+    for handler in handlers
+        push!(currentHandlers, handler)
+    end
 
-    while true
-        try
-            return func()
-        catch e
-            for handler in handlers
-                if e isa handler.first
-                    handler.second(e)
-                end
+    try
+        return func()
+    catch e
+        for handler in reverse(currentHandlers)
+            if e isa handler.first
+                handler.second(e)
+                break
             end
-
-            if !isnothing(INVOKED_RESTART)
-                continue
-            else
-                rethrow(e)
-                return
-            end
+        end
+        rethrow(e)
+    finally
+        for _ in handlers
+            pop!(currentHandlers)
         end
     end
 end
@@ -35,7 +39,7 @@ function method_argnames(m::Method)
     return argnames[1:m.nargs]
 end
 
-function to_escape(func) # a função func tem de ter um argumento exatamente. E quando esse argumento for chamado durante a execução de func, só pode ter um argumento também
+function to_escape(func) # Quando o argumento for chamado como função durante a execução de func, só pode ter um argumento
     methods = collect(Base.methods(func))
     escapeName = string(method_argnames(last(methods))[2])
 
@@ -52,37 +56,39 @@ function to_escape(func) # a função func tem de ter um argumento exatamente. E
             rethrow(e)
         end
     end
+
 end
 
 function with_restart(func, restarts...)
-    global INVOKED_RESTART
-
+    global availableRestarts
     for restart in restarts
-        RESTARTS_STACK[restart.first] = restart.second
+        availableRestarts[restart.first] = get(availableRestarts, restart.first, 0) + 1
     end
 
-    if !isnothing(INVOKED_RESTART) && available_restart(INVOKED_RESTART.first)
-        res = INVOKED_RESTART.second
-        INVOKED_RESTART = nothing
-        return res
-    else
-        return func()
-    end
-
-    for restart in restarts
-        delete!(RESTARTS_STACK, restart.name)
+    try
+        return handling(func)
+    catch e
+        if e isa InvokeRestart
+            for restart in restarts
+                if e.funcName == restart.first
+                    return restart.second(e.args...)
+                end
+            end
+        end
+        rethrow(e)
+    finally
+        for restart in restarts
+            availableRestarts[restart.first] > 1 ?
+            availableRestarts[restart.first] -= 1 :
+            delete!(availableRestarts, restart.first)
+        end
     end
 end
 
 function available_restart(name::Symbol)
-    return haskey(RESTARTS_STACK, name)
+    return get(availableRestarts, name, 0) >= 1
 end
 
 function invoke_restart(name::Symbol, args...)
-    global INVOKED_RESTART
-
-    if available_restart(name)
-        INVOKED_RESTART = name => RESTARTS_STACK[name](args...)
-    end
+    throw(InvokeRestart(name, args))
 end
-
