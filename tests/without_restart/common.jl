@@ -1,6 +1,7 @@
 include("../../Exceptional.jl")
 
-struct DivisionByZero <: Exception end
+abstract type ArithmeticException <: Exception end
+struct DivisionByZero <: ArithmeticException end
 
 reciprocal(x) = x == 0 ? throw(DivisionByZero()) : 1 / x
 

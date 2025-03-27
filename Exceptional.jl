@@ -12,7 +12,7 @@ availableRestarts = Dict{Symbol, Int}()
 
 function handling(func, handlers...) # func não pode ter argumentos
     global currentHandlers
-    for handler in handlers
+    for handler in reverse(handlers)
         push!(currentHandlers, handler)
     end
 
