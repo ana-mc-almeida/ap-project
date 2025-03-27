@@ -16,10 +16,14 @@ function handling(func, handlers...) # func não pode ter argumentos
         push!(currentHandlers, handler)
     end
 
+    handlersLen = length(handlers)
+
+    handlersToCheck = handlersLen == 0 ? currentHandlers : currentHandlers[end-handlersLen+1:end]
+
     try
         return func()
     catch e
-        for handler in reverse(currentHandlers)
+        for handler in reverse(handlersToCheck)
             if e isa handler.first
                 handler.second(e)
                 break

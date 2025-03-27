@@ -19,3 +19,21 @@ mystery(n) =
             end
         end
     end
+
+struct Error1 <: Exception end
+struct Error2 <: Exception end
+struct Error3 <: Exception end
+struct Error4 <: Exception end
+
+raise_error(x) = begin
+    if (x == 1)
+        throw(Error1())
+    end
+    if (x == 2)
+        throw(Error2())
+    end
+    if (x == 3)
+        throw(Error3())
+    end
+    throw(Error4())
+end
