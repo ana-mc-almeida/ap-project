@@ -5,7 +5,7 @@ reciprocal(value) =
         :return_value => identity,
         :retry_using => reciprocal) do
         value == 0 ?
-        throw(DivisionByZero()) :
+        error(DivisionByZero()) :
         1 / value
     end + 1
 

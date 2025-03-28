@@ -3,8 +3,9 @@ struct Escape{T} <: Exception
     result::T
 end
 
-struct UnavailableRestart <: Exception
+struct UnavailableRestart{T} <: Exception
     restart::Symbol
+    args::T
 end
 
 function method_argnames(m::Method)
@@ -50,6 +51,7 @@ end
 
 availableRestarts = Dict{Symbol, Int}()
 
+#= Só dá para usar esta função se o to_escape() conseguir resolver o test17
 function with_restart(func, restarts...)
     global availableRestarts
     for restart in restarts
@@ -68,8 +70,6 @@ function with_restart(func, restarts...)
 
     if result[1] isa Symbol
         for restart in restarts
-            println(restart.first)
-            println(result[1])
             if restart.first == result[1]
                 return restart.second(result[2:end])
             end
@@ -79,13 +79,40 @@ function with_restart(func, restarts...)
 
     return result
 end
+=#
+
+function with_restart(func, restarts...)
+    global availableRestarts
+    for restart in restarts
+        availableRestarts[restart.first] = get(availableRestarts, restart.first, 0) + 1
+    end
+
+    try
+        return func()
+    catch e
+        if e isa UnavailableRestart
+            for restart in restarts
+                if restart.first == e.restart
+                    return restart.second(e.args...)
+                end
+            end
+        end
+        rethrow()
+    finally
+        for restart in restarts
+            availableRestarts[restart.first] > 1 ?
+                availableRestarts[restart.first] -= 1 :
+                delete!(availableRestarts, restart.first)
+        end
+    end
+end
 
 function available_restart(name::Symbol)
     return get(availableRestarts, name, 0) >= 1
 end
 
 function invoke_restart(restart::Symbol, args...)
-    throw(UnavailableRestart(restart)) # TODO Deixar como throw normal ig
+    throw(UnavailableRestart(restart, args)) # TODO Deixar como throw normal ig
 end
 
 function signal(exception) # TODO explodir se o arg não for exception?

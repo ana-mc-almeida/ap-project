@@ -6,6 +6,6 @@ handling(TestException => (c) -> invoke_restart(:return_value, 10), DivisionByZe
     println(with_restart(:return_zero => () -> 0,
         :return_value => identity,
         :retry_using => reciprocal) do
-        throw(DivisionByZero())
+        error(DivisionByZero())
     end)
 end

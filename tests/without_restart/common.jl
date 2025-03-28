@@ -1,9 +1,9 @@
-include("../../Exceptional.jl")
+include("../../Exceptional2.jl")
 
 abstract type ArithmeticException <: Exception end
 struct DivisionByZero <: ArithmeticException end
 
-reciprocal(x) = x == 0 ? throw(DivisionByZero()) : 1 / x
+reciprocal(x) = x == 0 ? error(DivisionByZero()) : 1 / x
 
 mystery(n) =
     1 +
@@ -28,13 +28,13 @@ struct Error4 <: Exception end
 
 raise_error(x) = begin
     if (x == 1)
-        throw(Error1())
+        error(Error1())
     end
     if (x == 2)
-        throw(Error2())
+        error(Error2())
     end
     if (x == 3)
-        throw(Error3())
+        error(Error3())
     end
-    throw(Error4())
+    error(Error4())
 end

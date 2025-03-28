@@ -1,4 +1,4 @@
-include("../../ExceptionalSignal.jl")
+include("../../Exceptional2.jl")
 
 
 struct LineEndLimit <: Exception
