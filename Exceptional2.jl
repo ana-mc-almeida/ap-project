@@ -1,0 +1,107 @@
+struct Escape{T} <: Exception
+    funcName::String
+    result::T
+end
+
+struct UnavailableRestart <: Exception
+    restart::Symbol
+end
+
+function method_argnames(m::Method)
+    argnames = ccall(:jl_uncompress_argnames, Vector{Symbol}, (Any,), m.slot_syms)
+    isempty(argnames) && return argnames
+    return argnames[1:m.nargs]
+end
+
+function to_escape(func)
+    methods = collect(Base.methods(func))
+    escapeName = string(method_argnames(last(methods))[2])
+
+    escape_func = function (args...)
+        error(Escape(escapeName, args))
+    end
+
+    try
+        return func(escape_func)
+    catch e
+        if e isa Escape && e.funcName == escapeName
+            return length(e.result) == 1 ? e.result[1] : e.result
+        else
+            rethrow()
+        end
+    end
+end
+
+currentHandlers = Vector{Vector{Pair{DataType, Function}}}()
+
+function handling(func, handlers...) # func não pode ter argumentos
+    handlersList = Vector{Pair{DataType, Function}}()
+    for handler in handlers
+        push!(handlersList, handler)
+    end
+
+    global currentHandlers
+    push!(currentHandlers, handlersList)
+
+    func()
+
+    pop!(currentHandlers)
+end
+
+availableRestarts = Dict{Symbol, Int}()
+
+function with_restart(func, restarts...)
+    global availableRestarts
+    for restart in restarts
+        availableRestarts[restart.first] = get(availableRestarts, restart.first, 0) + 1
+    end
+
+    result = to_escape() do invoke_restart
+        func()
+    end
+    
+    for restart in restarts
+        availableRestarts[restart.first] > 1 ?
+            availableRestarts[restart.first] -= 1 :
+            delete!(availableRestarts, restart.first)
+    end
+
+    if result[1] isa Symbol
+        for restart in restarts
+            println(restart.first)
+            println(result[1])
+            if restart.first == result[1]
+                return restart.second(result[2:end])
+            end
+        end
+        invoke_restart(result[1], result[2:end])
+    end
+
+    return result
+end
+
+function available_restart(name::Symbol)
+    return get(availableRestarts, name, 0) >= 1
+end
+
+function invoke_restart(restart::Symbol, args...)
+    throw(UnavailableRestart(restart)) # TODO Deixar como throw normal ig
+end
+
+function signal(exception) # TODO explodir se o arg não for exception?
+    global currentHandlers
+
+    for handlerList in reverse(currentHandlers)
+        for handler in handlerList
+            if exception isa handler.first
+                handler.second(exception)
+                break
+            end
+        end
+    end
+end
+
+Base.error(exception) = begin
+    signal(exception)
+    throw(exception)
+end
