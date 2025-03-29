@@ -1,4 +1,4 @@
-include("../../Exceptional2.jl")
+include("../../Exceptional.jl")
 
 abstract type ArithmeticException <: Exception end
 struct DivisionByZero <: ArithmeticException end
