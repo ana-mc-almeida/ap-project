@@ -2,39 +2,10 @@ struct Escape{T} <: Exception
     funcName::String
     result::T
 end
-struct InvokeRestart{T} <: Exception
-    funcName::Symbol
+
+struct UnavailableRestart{T} <: Exception
+    restart::Symbol
     args::T
-end
-
-currentHandlers = Vector{Pair{DataType, Function}}()
-availableRestarts = Dict{Symbol, Int}()
-
-function handling(func, handlers...) # func não pode ter argumentos
-    global currentHandlers
-    for handler in reverse(handlers)
-        push!(currentHandlers, handler)
-    end
-
-    handlersLen = length(handlers)
-
-    handlersToCheck = handlersLen == 0 ? currentHandlers : currentHandlers[end-handlersLen+1:end]
-
-    try
-        return func()
-    catch e
-        for handler in reverse(handlersToCheck)
-            if e isa handler.first
-                handler.second(e)
-                break
-            end
-        end
-        rethrow(e)
-    finally
-        for _ in handlers
-            pop!(currentHandlers)
-        end
-    end
 end
 
 function method_argnames(m::Method)
@@ -43,25 +14,42 @@ function method_argnames(m::Method)
     return argnames[1:m.nargs]
 end
 
-function to_escape(func) # Quando o argumento for chamado como função durante a execução de func, só pode ter um argumento
+function to_escape(func)
     methods = collect(Base.methods(func))
     escapeName = string(method_argnames(last(methods))[2])
 
-    escape_func = function (arg)
-        throw(Escape(escapeName, arg))
+    escape_func = function (args...)
+        error(Escape(escapeName, args))
     end
 
     try
         return func(escape_func)
     catch e
         if e isa Escape && e.funcName == escapeName
-            return e.result
+            return length(e.result) == 1 ? e.result[1] : e.result
         else
-            rethrow(e)
+            rethrow()
         end
     end
-
 end
+
+currentHandlers = Vector{Vector{Pair{DataType, Function}}}()
+
+function handling(func, handlers...) # func não pode ter argumentos
+    handlersList = Vector{Pair{DataType, Function}}()
+    for handler in handlers
+        push!(handlersList, handler)
+    end
+
+    global currentHandlers
+    push!(currentHandlers, handlersList)
+
+    func()
+
+    pop!(currentHandlers)
+end
+
+availableRestarts = Dict{Symbol, Int}()
 
 function with_restart(func, restarts...)
     global availableRestarts
@@ -70,21 +58,21 @@ function with_restart(func, restarts...)
     end
 
     try
-        return handling(func)
+        return func()
     catch e
-        if e isa InvokeRestart
+        if e isa UnavailableRestart
             for restart in restarts
-                if e.funcName == restart.first
+                if restart.first == e.restart
                     return restart.second(e.args...)
                 end
             end
         end
-        rethrow(e)
+        rethrow()
     finally
         for restart in restarts
             availableRestarts[restart.first] > 1 ?
-            availableRestarts[restart.first] -= 1 :
-            delete!(availableRestarts, restart.first)
+                availableRestarts[restart.first] -= 1 :
+                delete!(availableRestarts, restart.first)
         end
     end
 end
@@ -93,6 +81,24 @@ function available_restart(name::Symbol)
     return get(availableRestarts, name, 0) >= 1
 end
 
-function invoke_restart(name::Symbol, args...)
-    throw(InvokeRestart(name, args))
+function invoke_restart(restart::Symbol, args...)
+    throw(UnavailableRestart(restart, args)) # TODO Deixar como throw normal ig
+end
+
+function signal(exception) # TODO explodir se o arg não for exception?
+    global currentHandlers
+
+    for handlerList in reverse(currentHandlers)
+        for handler in handlerList
+            if exception isa handler.first
+                handler.second(exception)
+                break
+            end
+        end
+    end
+end
+
+Base.error(exception) = begin
+    signal(exception)
+    throw(exception)
 end
