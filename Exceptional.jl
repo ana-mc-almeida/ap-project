@@ -57,6 +57,8 @@ function with_restart(func, restarts...)
         availableRestarts[restart.first] = get(availableRestarts, restart.first, 0) + 1
     end
 
+    handlersLength = length(currentHandlers)
+
     try
         return func()
     catch e
@@ -73,6 +75,10 @@ function with_restart(func, restarts...)
             availableRestarts[restart.first] > 1 ?
                 availableRestarts[restart.first] -= 1 :
                 delete!(availableRestarts, restart.first)
+        end
+
+        while length(currentHandlers) != handlersLength
+            pop!(currentHandlers)
         end
     end
 end
