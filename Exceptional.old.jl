@@ -44,9 +44,11 @@ function handling(func, handlers...) # func não pode ter argumentos
     global currentHandlers
     push!(currentHandlers, handlersList)
 
-    func()
+    res = func()
 
     pop!(currentHandlers)
+
+    return res
 end
 
 availableRestarts = Dict{Symbol, Int}()
