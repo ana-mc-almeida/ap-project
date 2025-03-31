@@ -1,3 +1,5 @@
+module Exceptional
+
 struct Escape{T} <: Exception
     funcName::String
     result::T
@@ -21,6 +23,7 @@ function method_argnames(m::Method)
 end
 
 function to_escape(func)
+    # println("to_escape: ", func)
     methods = collect(Base.methods(func))
     escapeName = string(method_argnames(last(methods))[2])
 
@@ -65,6 +68,7 @@ function with_restart(func, restarts...)
     handlersLength = length(currentHandlers)
 
     ret = to_escape() do escape
+        # println("with_restart: ", escape)
         for restart in restarts
             push!(availableRestarts, Restart(restart.first, restart.second, escape))
         end
@@ -72,7 +76,7 @@ function with_restart(func, restarts...)
         return func()
     end
 
-    for _ in availableRestarts
+    for _ in restarts
         pop!(availableRestarts)
     end
 
@@ -80,6 +84,7 @@ function with_restart(func, restarts...)
         pop!(currentHandlers)
     end
 
+    # println("leaving with_restart: ", ret)
     return ret
 end
 
@@ -96,9 +101,12 @@ function available_restart(name::Symbol)
 end
 
 function invoke_restart(name::Symbol, args...)
+    println("invoke_restart: ", name, args)
     for restart in reverse(availableRestarts)
         if restart.name == name
+            println("Restart found: ", restart.name, restart.escape, restart.func)
             restart.escape(restart.func(args...))
+            println("Restart invoked: ", restart.name, restart.escape, restart.func)
             return
         end
     end
@@ -122,4 +130,6 @@ end
 Base.error(exception) = begin
     signal(exception)
     throw(exception)
+end
+
 end
