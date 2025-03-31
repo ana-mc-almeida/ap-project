@@ -1,6 +1,5 @@
 include("../../ExceptionalExtended.jl")
 using .ExceptionalExtended
-println(names(ExceptionalExtended))  # Verifique se with_restart aparece na lista
 
 struct DivisionByZero <: Exception end
 

@@ -2,7 +2,6 @@ module ExceptionalExtended
 
 include("Exceptional.jl")  # Include the Exceptional module
 using .Exceptional
-println(names(Exceptional))  # Verifique se with_restart aparece na lista
 
 # export to_escape, handling, with_restart, available_restart, invoke_restart, signal
 export Exceptional
@@ -44,7 +43,7 @@ function interactive_restart_prompt(exception)
 
     if isempty(restarts)
         println("\nNo restarts available. Rethrowing exception.")
-        throw(exception)  # Usamos throw em vez de rethrow
+        throw(exception)
     end
 
     println("\nAn error occurred: ", exception)
@@ -65,18 +64,34 @@ function interactive_restart_prompt(exception)
         throw(exception)
     end
 
+    print("\nWrite args (press Enter to skip): ")
+    args = readline()
+
+    if isempty(args)
+        args = nothing
+    else
+        parsed_args = tryparse(Int, args)
+        if parsed_args !== nothing
+            args = parsed_args
+        end
+    end
+
     try
         idx = parse(Int, choice)
         if 1 <= idx <= length(restarts)
             restart = restarts[idx]
-            return invoke_interactive_restart(restart)
+            return invoke_interactive_restart(restart, args)
         else
             println("Invalid choice. Rethrowing exception.")
             throw(exception)
         end
-    catch
-        println("Invalid input. Rethrowing exception.")
-        throw(exception)
+    catch e
+        if (e isa Exceptional.Escape)
+            # println("Escape exception 1: ", e) # debug
+        else
+            # println("Invalid input. Rethrowing exception.") # FIXME
+        end
+        rethrow(e)
     end
 end
 
@@ -90,14 +105,23 @@ end
 """
     invoke_interactive_restart(restart::Restart)
 """
-function invoke_interactive_restart(restart::Exceptional.Restart)
-    println("\nInvoking restart: $(restart.name)")
-    println("Available Restart:", Exceptional.available_restart(restart.name))
+function invoke_interactive_restart(restart::Exceptional.Restart, args)
+    # println("\nInvoking restart: $(restart.name)") # debug
+    # println("Available Restart:", Exceptional.available_restart(restart.name)) # debug
     try
-        Exceptional.invoke_restart(restart.name)
+        if(args!= nothing)
+            Exceptional.invoke_restart(restart.name, args)
+        else
+            Exceptional.invoke_restart(restart.name)
+        end
     catch e
-        println("Failed to invoke restart: ", e)
-        throw(e)
+        if (e isa Exceptional.Escape)
+            # println("Escape exception 2: ", e) # debug
+        else
+            # println("Error invoking restart 2: ", e) # debug
+        end
+        # println("Failed to invoke restart: ", e) # debug
+        rethrow(e)
     end
 end
 
@@ -122,8 +146,18 @@ function interactive_signal(exception)
 
     # Se não foi tratado e há restarts disponíveis, mostra prompt
     if !handled && !isempty(Exceptional.availableRestarts)
-        interactive_restart_prompt(exception)
+        try
+            interactive_restart_prompt(exception)
+        catch e
+            if (e isa Exceptional.Escape)
+                # println("Escape exception 5: ", e) # debug
+            else
+                # println("Error invoking restart 5: ", e) # debug
+            end
+            rethrow(e)
+        end
     elseif !handled
+        println("No handlers found for exception: ", exception)
         throw(exception)
     end
 end
@@ -132,11 +166,20 @@ end
 Base.error(exception) = begin
     # Exceptional.signal(exception)
     if (exception isa Exceptional.Escape)
-        # println("Escape exception: ", exception)
+        # println("Escape exception 3: ", exception) # debug
+        throw(exception)
     else
-        interactive_signal(exception)
+        try
+            interactive_signal(exception)
+        catch e
+            if (e isa Exceptional.Escape)
+                # println("Escape exception 4: ", e) # debug
+            else
+                # println("Error invoking restart 4: ", e) # debug
+            end
+            rethrow(e)
+        end
     end
-    throw(exception)
 end
 
 
