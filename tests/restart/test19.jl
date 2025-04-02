@@ -1,6 +1,6 @@
 include("common.jl")
 
-# This test makes sure that only the restarts from the current with_restart are removed from availableRestarts vector
+# Test if only the restarts from the current with_restart are removed from availableRestarts vector
 
 handling(DivisionByZero => (x) -> invoke_restart(:return_one)) do
     println(
