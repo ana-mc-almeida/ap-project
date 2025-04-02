@@ -72,7 +72,7 @@ function with_restart(func, restarts...)
         return func()
     end
 
-    for _ in availableRestarts
+    for _ in restarts
         pop!(availableRestarts)
     end
 
