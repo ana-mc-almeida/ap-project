@@ -8,7 +8,6 @@ handling(DivisionByZero => (x) ->
     println(with_restart(:return_zero => () -> 0) do
         with_restart(:return_zero => () -> 0) do 
             1
-        end
-        + 1
+        end + 1
     end)
 end

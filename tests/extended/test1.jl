@@ -1,10 +1,9 @@
 include("../../ExceptionalExtended.jl")
-using .ExceptionalExtended
 
 struct DivisionByZero <: Exception end
 
 reciprocal(value) =
-    Exceptional.with_restart(:return_zero => () -> 0,
+    with_restart(:return_zero => () -> 0,
         :return_value => identity,
         :retry_using => reciprocal) do
 
@@ -12,7 +11,7 @@ reciprocal(value) =
         # Exceptional.invoke_restart(:return_zero)
 
         value == 0 ?
-        Exceptional.error(DivisionByZero()) :
+        error(DivisionByZero()) :
         1 / value
     end
 

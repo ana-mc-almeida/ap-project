@@ -1,4 +1,4 @@
-include("../../Exceptional.jl")
+include("../../ExceptionalExtended.jl")
 
 struct DivisionByZero <: Exception end
 
