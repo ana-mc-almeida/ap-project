@@ -1,5 +1,4 @@
-include("../../Exceptional.jl")
-
+include("../../ExceptionalExtended.jl")
 
 struct LineEndLimit <: Exception
 end

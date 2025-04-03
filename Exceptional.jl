@@ -39,7 +39,7 @@ end
 
 currentHandlers = Vector{Vector{Pair{DataType, Function}}}()
 
-function handling(func, handlers...) # func não pode ter argumentos
+function handling(func, handlers...)
     handlersList = Vector{Pair{DataType, Function}}()
     for handler in handlers
         push!(handlersList, handler)
