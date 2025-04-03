@@ -14,8 +14,7 @@ function interactive_restart_prompt(exception)
     println("Available restarts:")
 
     for (i, r) in enumerate(restarts)
-        desc = get_restart_description(r)
-        @printf "%2d) %-10s : %s\n" i r desc
+        @printf "%2d) %-10s\n" i r
     end
 
     print("\nSelect restart (1-$(length(restarts)), q to quit): ")
@@ -52,10 +51,6 @@ function interactive_restart_prompt(exception)
     catch e
         rethrow(e)
     end
-end
-
-function get_restart_description(restart::Symbol)
-    "Invoke restart $(restart)"
 end
 
 function invoke_interactive_restart(restart::Symbol, args)
