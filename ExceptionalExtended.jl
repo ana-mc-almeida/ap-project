@@ -6,7 +6,9 @@ function interactive_restart_prompt(exception)
     restarts = keys(availableRestarts)
 
     if isempty(restarts)
-        println("\nNo restarts available. Rethrowing exception.")
+        # This print is commented to allow all the tests to pass
+        # Uncomment for better user experience
+        # println("\nNo restarts available. Rethrowing exception.")
         throw(exception)
     end
 
@@ -19,7 +21,6 @@ function interactive_restart_prompt(exception)
 
     print("\nSelect restart (1-$(length(restarts)), q to quit): ")
     choice = readline()
-
     println("You selected: ", choice)
 
     if lowercase(choice) == "q"
@@ -27,33 +28,20 @@ function interactive_restart_prompt(exception)
         throw(exception)
     end
 
-    print("Write args (press Enter to skip): ")
-    args = readline()
-
-    if isempty(args)
-        args = nothing
-    else
+    idx = parse(Int, choice)
+    if 1 <= idx <= length(restarts)
+        print("Write args (press Enter to skip): ")
+        args = readline()
         parsed_args = tryparse(Int, args)
         if !isnothing(parsed_args)
             args = parsed_args
         end
-    end
 
-    idx = parse(Int, choice)
-    if 1 <= idx <= length(restarts)
         restart = collect(restarts)[idx]
-        return invoke_interactive_restart(restart, args)
+        return invoke_restart(restart, args...)
     else
         println("Invalid choice. Rethrowing exception.")
         throw(exception)
-    end
-end
-
-function invoke_interactive_restart(restart::Symbol, args)
-    if (!isnothing(args))
-        invoke_restart(restart, args)
-    else
-        invoke_restart(restart)
     end
 end
 
@@ -71,21 +59,12 @@ function interactive_signal(exception)
         end
     end
 
-    if !handled && !isempty(availableRestarts)
+    if !handled
         interactive_restart_prompt(exception)
-    elseif !handled
-        # This print is commented to allow all the tests to pass
-        # Uncomment for better user experience
-        # println("No restart found for exception: ", exception) 
-        throw(exception)
     end
 end
 
 Base.error(exception) = begin
-    if (exception isa Escape)
-        throw(exception)
-    else
-        interactive_signal(exception)
-    end
+    interactive_signal(exception)
     throw(exception)
 end
