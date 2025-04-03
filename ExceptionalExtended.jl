@@ -3,7 +3,7 @@ include("Exceptional.jl")  # Include the Exceptional module
 using Printf
 
 function interactive_restart_prompt(exception)
-    restarts = keys(availableRestarts) 
+    restarts = keys(availableRestarts)
 
     if isempty(restarts)
         println("\nNo restarts available. Rethrowing exception.")
@@ -39,29 +39,21 @@ function interactive_restart_prompt(exception)
         end
     end
 
-    try
-        idx = parse(Int, choice)
-        if 1 <= idx <= length(restarts)
-            restart = collect(restarts)[idx]
-            return invoke_interactive_restart(restart, args)
-        else
-            println("Invalid choice. Rethrowing exception.")
-            throw(exception)
-        end
-    catch e
-        rethrow(e)
+    idx = parse(Int, choice)
+    if 1 <= idx <= length(restarts)
+        restart = collect(restarts)[idx]
+        return invoke_interactive_restart(restart, args)
+    else
+        println("Invalid choice. Rethrowing exception.")
+        throw(exception)
     end
 end
 
 function invoke_interactive_restart(restart::Symbol, args)
-    try
-        if(!isnothing(args))
-            invoke_restart(restart, args)
-        else
-            invoke_restart(restart)
-        end
-    catch e
-        rethrow(e)
+    if (!isnothing(args))
+        invoke_restart(restart, args)
+    else
+        invoke_restart(restart)
     end
 end
 
@@ -80,11 +72,7 @@ function interactive_signal(exception)
     end
 
     if !handled && !isempty(availableRestarts)
-        try
-            interactive_restart_prompt(exception)
-        catch e
-            rethrow(e)
-        end
+        interactive_restart_prompt(exception)
     elseif !handled
         # This print is commented to allow all the tests to pass
         # Uncomment for better user experience
@@ -97,11 +85,7 @@ Base.error(exception) = begin
     if (exception isa Escape)
         throw(exception)
     else
-        try
-            interactive_signal(exception)
-        catch e
-            rethrow(e)
-        end
+        interactive_signal(exception)
     end
     throw(exception)
 end
