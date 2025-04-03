@@ -3,7 +3,7 @@ include("Exceptional.jl")  # Include the Exceptional module
 using Printf
 
 function interactive_restart_prompt(exception)
-    restarts = availableRestarts
+    restarts = keys(availableRestarts) 
 
     if isempty(restarts)
         println("\nNo restarts available. Rethrowing exception.")
@@ -15,7 +15,7 @@ function interactive_restart_prompt(exception)
 
     for (i, r) in enumerate(restarts)
         desc = get_restart_description(r)
-        @printf "%2d) %-10s : %s\n" i r.name desc
+        @printf "%2d) %-10s : %s\n" i r desc
     end
 
     print("\nSelect restart (1-$(length(restarts)), q to quit): ")
@@ -28,7 +28,7 @@ function interactive_restart_prompt(exception)
         throw(exception)
     end
 
-    print("\nWrite args (press Enter to skip): ")
+    print("Write args (press Enter to skip): ")
     args = readline()
 
     if isempty(args)
@@ -43,7 +43,7 @@ function interactive_restart_prompt(exception)
     try
         idx = parse(Int, choice)
         if 1 <= idx <= length(restarts)
-            restart = restarts[idx]
+            restart = collect(restarts)[idx]
             return invoke_interactive_restart(restart, args)
         else
             println("Invalid choice. Rethrowing exception.")
@@ -54,16 +54,16 @@ function interactive_restart_prompt(exception)
     end
 end
 
-function get_restart_description(restart::UnavailableRestart)
-    "Invoke restart $(restart.restart)"
+function get_restart_description(restart::Symbol)
+    "Invoke restart $(restart)"
 end
 
-function invoke_interactive_restart(restart::UnavailableRestart, args)
+function invoke_interactive_restart(restart::Symbol, args)
     try
         if(!isnothing(args))
-            invoke_restart(restart.restart, args)
+            invoke_restart(restart, args)
         else
-            invoke_restart(restart.restart)
+            invoke_restart(restart)
         end
     catch e
         rethrow(e)
