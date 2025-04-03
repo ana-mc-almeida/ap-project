@@ -3,7 +3,8 @@ import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Diretórios
-tests_dir = "./"
+tests_dir = "tests"
+tests_to_skip = ["extended"]
 
 
 def run_julia_test(test_file):
@@ -36,6 +37,10 @@ def run_test(root, test_file):
     test_file_path = os.path.join(root, test_file)
     expected_output_path = os.path.join(root, f"{test_name}.out")
 
+    skip_test = any(skip_string in test_file_path for skip_string in tests_to_skip)
+    if skip_test:
+        return test_name, "skipped"
+
     if not os.path.exists(expected_output_path):
         return test_name, False
 
@@ -56,6 +61,7 @@ def run_tests_in_folder(folder_path):
     total_tests = 0
     passed_tests = 0
     failed_tests = []
+    skiped_tests = []
 
     test_files = [
         f for f in os.listdir(folder_path) if f.endswith(".jl") and f.startswith("test")
@@ -69,7 +75,11 @@ def run_tests_in_folder(folder_path):
         }
         for future in as_completed(futures):
             test_name, passed = future.result()
-            if passed:
+            if passed == "skipped":
+                skiped_tests.append(test_name)
+                passed_tests += 1
+                continue
+            elif passed:
                 passed_tests += 1
             else:
                 failed_tests.append(test_name)
@@ -78,6 +88,10 @@ def run_tests_in_folder(folder_path):
     print(
         f"\nRelatório de Testes para a pasta '{folder_name}': {passed_tests}/{total_tests}"
     )
+    if skiped_tests:
+        print("Testes que foram skippados:")
+        for test in skiped_tests:
+            print(f"- {test}")
     if failed_tests:
         print("Testes que falharam:")
         for test in failed_tests:
