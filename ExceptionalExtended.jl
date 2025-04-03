@@ -54,16 +54,16 @@ function interactive_restart_prompt(exception)
     end
 end
 
-function get_restart_description(restart::Restart)
-    "Invoke restart $(restart.name)"
+function get_restart_description(restart::UnavailableRestart)
+    "Invoke restart $(restart.restart)"
 end
 
-function invoke_interactive_restart(restart::Restart, args)
+function invoke_interactive_restart(restart::UnavailableRestart, args)
     try
         if(!isnothing(args))
-            invoke_restart(restart.name, args)
+            invoke_restart(restart.restart, args)
         else
-            invoke_restart(restart.name)
+            invoke_restart(restart.restart)
         end
     catch e
         rethrow(e)
